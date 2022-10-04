@@ -75,7 +75,6 @@ func (d *Dictionary) Delete(key string) error {
 
 func (d *Dictionary) List() ([]Entry, error) {
 	var e []Entry
-	var buffer bytes.Buffer
 
 	err := d.db.View(func(txn *badger.Txn) error {
 		var opts badger.IteratorOptions
@@ -83,24 +82,11 @@ func (d *Dictionary) List() ([]Entry, error) {
 		defer it.Close()
 		for it.Rewind(); it.Valid(); it.Next() {
 			item := it.Item()
-			err := item.Value(func(val []byte) error {
-				_, err := buffer.Write(val)
-				var ent Entry
-				if err != nil {
-					fmt.Println("ERROR", err)
-				}
-				dec := gob.NewDecoder(&buffer)
-
-				err = dec.Decode(&ent)
-				e = append(e, ent)
-
-				return nil
-
-			})
+			entry, err := getEntry(item)
 			if err != nil {
 				fmt.Println("ERROR ", err)
 			}
-
+			e = append(e, entry)
 		}
 		return nil
 	})
